@@ -5,5 +5,5 @@ Assignment #1 - Problem 4 [MPI - Primitives]
 Usage
 ----------
 ./run.sh <number of processes>
-./run.sh 30
-./run.sh 200
+./run.sh 8
+./run.sh 16

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 NUM_OF_PROCESS=36
-NUM_OF_N=10000
+NUM_OF_N=200000
 DATA_FILE_NAME="data.txt"
 #REDIRECTION="> /dev/null"
 

@@ -5,5 +5,5 @@ Assignment #1 - Problem 5 [MPI - Simple Example]
 Usage
 ----------
 ./run.sh <number of processes> <number of integers>
-./run.sh 30 10000
-./run.sh 100 200000
+./run.sh 8 40000
+./run.sh 24 1000000
