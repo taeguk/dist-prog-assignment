@@ -6,7 +6,7 @@ typedef struct {
 } RGB;
 
 typedef struct {
-	char M, N; // 매직넘버
+	char M, N;
 	int width;
 	int height;
 	int max;

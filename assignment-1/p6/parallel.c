@@ -4,11 +4,6 @@
 #include <stdbool.h>
 #include "ppm.h"
 
-#define INPUT_FILE_NAME "example/small/boxes_1.ppm"
-#define OUTPUT_FILE_NAME "output/small/boxes_1.ppm"
-//#define INPUT_FILE_NAME "example/large/falls_2.ppm"
-//#define OUTPUT_FILE_NAME "output/large/falls_2.ppm"
-
 typedef struct {
 	int offset;
 	RGB rgb;
@@ -16,9 +11,9 @@ typedef struct {
 
 int rank, K;
 int root = 0;
-MPI_Datatype RGB_Type, Pixel_Type;
+MPI_Datatype RGB_Type, Pixel_Type, RGB_RowGroup_Type;
 
-void derivedRGBType (MPI_Datatype *t)
+void derivedRGBType()
 {
 	RGB sample;
 
@@ -37,11 +32,11 @@ void derivedRGBType (MPI_Datatype *t)
 	MPI_Get_address(&sample.B, &off);
 	displ[2] = off - base;
 
-	MPI_Type_create_struct(3, blklen, displ, types, t);
-	MPI_Type_commit(t);
+	MPI_Type_create_struct(3, blklen, displ, types, &RGB_Type);
+	MPI_Type_commit(&RGB_Type);
 }
 
-void derivedPixelType (MPI_Datatype *t)
+void derivedPixelType()
 {
 	Pixel sample;
 
@@ -59,124 +54,136 @@ void derivedPixelType (MPI_Datatype *t)
 	MPI_Get_address(&sample.rgb, &off);
 	displ[1] = off - base;
 
-	MPI_Type_create_struct(2, blklen, displ, types, t);
-	MPI_Type_commit(t);
+	MPI_Type_create_struct(2, blklen, displ, types, &Pixel_Type);
+	MPI_Type_commit(&Pixel_Type);
 }
 
-void parallel_flip(PPMImage *img)
+void scatter_img_block(RGB *sendbuf, int send_block_cnt,
+					   int **p_sendcounts, int **p_displs,
+					   RGB **p_recvbuf, int *p_recv_block_cnt, int block_size)
 {
-	int N = img->width * img->height / 2;
-	int cnt = N / K;
-	bool has_dummy;
-	int si, ei;
+	int i;
 
-	if (N % K == 0)
-	{
-		has_dummy = false;
-		si = rank * cnt;
+	if (rank == root) {
+		*p_sendcounts = malloc(sizeof(int) * K);
+		*p_displs = malloc(sizeof(int) * K);
+
+		int idx = 0;
+		for(i = 0; i < K; ++i) {
+			(*p_displs)[i] = idx;
+
+			if (i < send_block_cnt % K)
+				(*p_sendcounts)[i] = send_block_cnt / K + 1;
+			else
+				(*p_sendcounts)[i] = send_block_cnt / K;
+
+			idx += (*p_sendcounts)[i];
+		}
 	}
-	else if (rank < N % K)
-	{
-		++cnt;
-		has_dummy = false;
-		si = rank * cnt;
-	}
+
+	if (rank < send_block_cnt % K)
+		*p_recv_block_cnt = send_block_cnt / K + 1;
 	else
-	{
-		has_dummy = true;
-		si = (N % K) * (cnt+1);
-		si += (rank - N % K) * cnt;
-	}
+		*p_recv_block_cnt = send_block_cnt / K;
 
-	ei = si + cnt;
+	*p_recvbuf = malloc(sizeof(RGB) * block_size * (*p_recv_block_cnt));
+	MPI_Scatterv(sendbuf, *p_sendcounts, *p_displs, RGB_RowGroup_Type,
+				 *p_recvbuf, *p_recv_block_cnt, RGB_RowGroup_Type, root, MPI_COMM_WORLD);
+}
 
-	printf("[%d] N = %d, cnt = %d\n", rank, N, cnt);
-	printf("[%d] %d, %d\n", rank, si, ei);
-
-	Pixel* pixels = malloc(sizeof(Pixel) * ((cnt+1)*2));
-	int pcnt = 0;
-
-	for(int i=si; i<ei; ++i)
-	{
-		int y = i / img->width;
-		int x = i % img->width;
-		int ry = img->height-1-y;
-
-		printf("[%d] y = %d, ry = %d, x = %d\n", rank, y, ry, x);
-		
-		//RGB tmp = img->pixels[y * img->width + x];
-		//img->pixels[y * img->width + x] = img->pixels[ry * img->width + x];
-		//img->pixels[ry * img->width + x] = tmp;
-		
-		pixels[pcnt].offset = y * img->width + x;
-		pixels[pcnt++].rgb = img->pixels[ry * img->width + x];
-		pixels[pcnt].offset = ry * img->width + x;
-		pixels[pcnt++].rgb = img->pixels[y * img->width + x];
-	}
-
-	if (has_dummy)
-	{
-		pixels[pcnt++].offset = -1;
-		pixels[pcnt++].offset = -1;
-	}
-
-	Pixel* recv_pixels = NULL;
-	if (rank == root)
-		recv_pixels = malloc(sizeof(Pixel) * pcnt * K);
-
-	int err = MPI_Gather(pixels, pcnt, Pixel_Type, recv_pixels, pcnt, Pixel_Type, root, MPI_COMM_WORLD);
+void merge_results(RGB *merged, int *recvcounts, int *displs,
+				   RGB *results, int block_cnt)
+{
+	int err = MPI_Gatherv(results, block_cnt, RGB_RowGroup_Type,
+						  merged, recvcounts, displs,
+						  RGB_RowGroup_Type, root, MPI_COMM_WORLD);
 
 	if (err != MPI_SUCCESS)
 		printf("something goes wrong!\n");
-
-	// master
-	if (rank == root)
-	{
-		for(int i=0; i<pcnt*K; ++i)
-		{
-			int offset = recv_pixels[i].offset;
-			
-			if (offset < 0)
-			{
-				printf("213r13r2fsadfasdgg\n");
-				return;
-			}
-
-			img->pixels[offset] = recv_pixels[i].rgb;
-		}
-		
-		free(recv_pixels);
-	}
-
-	free(pixels);
 }
 
-void parallel_grayscale(PPMImage *img)
+void process(RGB *data, int block_cnt, int block_size)
 {
+	RGB *blk_ptr = data;
+
+	for(int i=0; i<block_cnt; ++i, blk_ptr += block_size) {
+
+		// flip block.
+		for(int j=0; j<block_size/2; ++j) {
+			RGB tmp = blk_ptr[j];
+			blk_ptr[j] = blk_ptr[block_size - 1 - j];
+			blk_ptr[block_size - 1 - j] = tmp;
+		}
+
+		// grayscale
+		for(int j=0; j<block_size; ++j) {
+			blk_ptr[j].R = blk_ptr[j].G = blk_ptr[j].B =
+					((int)blk_ptr[j].R + blk_ptr[j].G + blk_ptr[j].B) / 3;
+		}
+	}
 }
 
 int main(int argc, char **argv)
 {
+	double start_time, after_read_time, before_write_time, end_time;
+
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &K);
 
-	derivedRGBType(&RGB_Type);
-	derivedPixelType(&Pixel_Type);
-
-	PPMImage img;
-
-	fnReadPPM(INPUT_FILE_NAME, &img);
-	
-	parallel_flip(&img);
-	parallel_grayscale(&img);
-
-	if (rank == root)
-	{
-		fnWritePPM(OUTPUT_FILE_NAME, &img);
+	if (argc < 3) {
+		printf("ERROR!\n");
+		return 1;
 	}
 
-	fnClosePPM(&img);
+	PPMImage img;
+	int width, height;
+
+	if (rank == root) {
+		printf("READY!\n");
+		start_time = MPI_Wtime();
+	}
+
+	if (rank == root) {
+		fnReadPPM(argv[1], &img);
+		width = img.width;
+		height = img.height;
+	}
+	after_read_time = MPI_Wtime();
+
+	MPI_Bcast(&width, 1, MPI_INT, root, MPI_COMM_WORLD);
+	MPI_Bcast(&height, 1, MPI_INT, root, MPI_COMM_WORLD);
+
+	derivedRGBType();
+	derivedPixelType();
+	MPI_Type_vector(1, width, 1, RGB_Type, &RGB_RowGroup_Type);
+	MPI_Type_commit(&RGB_RowGroup_Type);
+
+	RGB *data = NULL;
+	int data_block_cnt;
+	int *counts = NULL, *displs = NULL;
+	scatter_img_block(img.pixels, height,
+					  &counts, &displs,
+					  &data, &data_block_cnt, width);
+
+	printf("[%d] received data block cnt = %d\n", rank, data_block_cnt);
+
+	process(data, data_block_cnt, width);
+	merge_results(img.pixels, counts, displs, data, data_block_cnt);
+
+	if (!counts) free(counts);
+	if (!displs) free(displs);
+	if (!data) free(data);
+
+	if (rank == root) {
+		before_write_time = MPI_Wtime();
+		fnWritePPM(argv[2], &img);
+		fnClosePPM(&img);
+
+		end_time = MPI_Wtime();
+		printf("[T] Elapsed time = %lf seconds.\n", end_time - start_time);
+		printf("[T] Elapsed time without reading/writing PPM = %lf seconds.\n", before_write_time - after_read_time);
+	}
 
 	MPI_Finalize();
 

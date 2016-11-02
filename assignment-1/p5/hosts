@@ -1,0 +1,10 @@
+# This is an example hostfile.  Comments begin with
+csblade02.sogang.ac.kr slots=2 max-slots=4
+csblade03.sogang.ac.kr slots=2 max-slots=4
+csblade04.sogang.ac.kr slots=2 max-slots=4
+csblade05.sogang.ac.kr slots=2 max-slots=4
+csblade06.sogang.ac.kr slots=2 max-slots=4
+csblade07.sogang.ac.kr slots=2 max-slots=4
+csblade09.sogang.ac.kr slots=2 max-slots=4
+csblade10.sogang.ac.kr slots=2 max-slots=4
+csblade11.sogang.ac.kr slots=2 max-slots=4

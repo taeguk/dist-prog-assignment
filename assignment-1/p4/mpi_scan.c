@@ -5,9 +5,6 @@
 
 #define RANDOM_X_RANGE 1000
 
-/*
- * the user-defined function
- */
 void scan(int *in, int *inout, int *len, MPI_Datatype *dptr)
 {
 	int i;
@@ -20,10 +17,16 @@ void scan(int *in, int *inout, int *len, MPI_Datatype *dptr)
 
 int main(int argc, char **argv)
 {
+	double start_time, end_time;
 	int rank, num;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &num);
+
+	if (rank == 0) {
+		printf("READY!\n");
+		start_time = MPI_Wtime();
+	}
 
 	srand((rank+1) * time(NULL));
 	
@@ -37,6 +40,13 @@ int main(int argc, char **argv)
 	MPI_Scan(&val, &result, 1, MPI_INT, myOp, MPI_COMM_WORLD);
 
 	printf("I'm %d of %d. Val = %d, Result = %d\n", rank, num, val, result);
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if (rank == 0) {
+		end_time = MPI_Wtime();
+		printf("[T] Elapsed time = %lf seconds.\n", end_time - start_time);
+	}
 
 	MPI_Finalize();
 

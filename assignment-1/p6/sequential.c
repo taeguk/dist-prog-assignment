@@ -1,11 +1,13 @@
 #include "ppm.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
-//#define INPUT_FILE_NAME "example/small/boxes_1.ppm"
-//#define OUTPUT_FILE_NAME "output/small/boxes_1.ppm"
-#define INPUT_FILE_NAME "example/large/falls_2.ppm"
-#define OUTPUT_FILE_NAME "output/large/falls_2.ppm"
+#define GET_TIME(now) { \
+	struct timeval t; \
+	gettimeofday(&t, NULL); \
+	now = t.tv_sec + t.tv_usec / 1000000.0; \
+}
 
 RGB* alloc_pixels(int width, int height)
 {
@@ -18,13 +20,12 @@ RGB* alloc_pixels(int width, int height)
 
 void flip_horizontally(PPMImage *img)
 {
-	for(int i=0, ri=img->height-1; i < img->height/2; ++i, --ri)
-	{
-		for(int j=0; j<img->width; ++j)
-		{
-			RGB tmp = img->pixels[i * img->width + j];
-			img->pixels[i * img->width + j] = img->pixels[ri * img->width + j];
-			img->pixels[ri * img->width + j] = tmp;
+	for (int i = 0; i < img->height; ++i) {
+		RGB *base = &img->pixels[i * img->width];
+		for (int j = 0; j < img->width / 2; ++j) {
+			RGB tmp = base[j];
+			base[j] = base[img->width - 1 - j];
+			base[img->width - 1 - j] = tmp;
 		}
 	}
 }
@@ -44,17 +45,34 @@ void grayscale(PPMImage *img)
 	}
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
-	PPMImage img;
+	double start_time, after_read_time, before_write_time, end_time;
 
-	fnReadPPM(INPUT_FILE_NAME, &img);
+	if (argc < 3) {
+		printf("ERROR!\n");
+		return 1;
+	}
+
+	GET_TIME(start_time);
+
+	PPMImage img;
+	fnReadPPM(argv[1], &img);
+
+	GET_TIME(after_read_time);
 
 	flip_horizontally(&img);
 	grayscale(&img);
 
-	fnWritePPM(OUTPUT_FILE_NAME, &img);
+	GET_TIME(before_write_time);
+
+	fnWritePPM(argv[2], &img);
 	fnClosePPM(&img);
+
+	GET_TIME(end_time);
+
+	printf("[T] Elapsed time = %lf seconds.\n", end_time - start_time);
+	printf("[T] Elapsed time without reading/writing PPM = %lf seconds.\n", before_write_time - after_read_time);
 
 	return 0;
 }

@@ -70,27 +70,21 @@ int fnWritePPM(char* fileNm, PPMImage* img)
 {
 	FILE* fp;
 
-	fp = fopen(fileNm, "w");
+	fp = fopen(fileNm, "wb");
 	if(fp == NULL){
 		fprintf(stderr, "파일 생성에 실패하였습니다.\n");
 		return FALSE;
 	}
 
-	fprintf(fp, "%c%c\n", 'P', '3');
+	fprintf(fp, "%c%c\n", 'P', '6');
 	fprintf(fp, "%d %d\n" , img->width, img->height);
 	fprintf(fp, "%d\n", 255);
 
 
 	for(int i=0; i<img->height; i++){
 		for(int j=0; j<img->width; j++){
-
-			fprintf(fp, "%d ", img->pixels[i*img->width + j].R);
-			fprintf(fp, "%d ", img->pixels[i*img->width + j].G);
-			fprintf(fp, "%d ", img->pixels[i*img->width + j].B);
-
+			fwrite(&img->pixels[i * img->width + j], sizeof(unsigned char), 3, fp);
 		}
-
-		fprintf(fp, "\n");	// 생략가능
 	}
 
 	fclose(fp);
