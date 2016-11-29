@@ -1,7 +1,3 @@
-//
-// Created by taeguk on 2016-11-25.
-//
-
 #include "my_rwl.h"
 
 static inline int my_atomic_integer_read(int* p_integer)
@@ -45,9 +41,7 @@ int my_rwlock_init(my_rwlock_t* p_rwlock, const char* __not_used__)
     if (pthread_cond_init(&p_rwlock->cv_read, NULL) != 0) goto ERROR_CV_READ;
     if (pthread_cond_init(&p_rwlock->cv_write, NULL) != 0) goto ERROR_CV_WRITE;
 
-    p_rwlock->atomic_vars.vars.reader_cnt = 0;
-    p_rwlock->atomic_vars.vars.can_read = 1;
-    p_rwlock->reading_cnt = 0;
+    p_rwlock->reader_cnt = p_rwlock->writer_cnt = p_rwlock->writing = 0;
 
     return 0;
 
@@ -78,51 +72,68 @@ int my_rwlock_destroy(my_rwlock_t* p_rwlock)
  */
 int my_rwlock_rdlock(my_rwlock_t* p_rwlock)
 {
-    // increment reader_cnt and fetch writer_.
-    int old = my_atomic_integer_add(&p_rwlock->atomic_vars.combined, 1 << LSB_OFFSET_READER_CNT);
-    if( ! ((my_rwlock_t_atomic_vars) old).vars.can_read) {
-        // when writer thread is having a lock.
-        pthread_mutex_lock(&p_rwlock->mutex);
+    pthread_mutex_lock(&p_rwlock->mutex);
+    ++p_rwlock->reader_cnt;
+    // printf("my_rwlock_rdlock! %d %d %d\n", p_rwlock->reader_cnt, p_rwlock->writer_cnt, p_rwlock->writing);
+    if (p_rwlock->writing)
         pthread_cond_wait(&p_rwlock->cv_read, &p_rwlock->mutex);
-        pthread_mutex_unlock(&p_rwlock->mutex);
-    }
-    my_atomic_integer_inc(&p_rwlock->reading_cnt);
+    // printf("Reader ger a lock!\n");
+    pthread_mutex_unlock(&p_rwlock->mutex);
+
     return 0;
 }
 
 int my_rwlock_wrlock(my_rwlock_t* p_rwlock)
 {
-    // set can_read = 0 and fetch reader_cnt.
-    int old = __sync_fetch_and_and(&p_rwlock->atomic_vars.combined, 0xFFFF0000);
-    if(((my_rwlock_t_atomic_vars) old).vars.reader_cnt > 0) {
-        pthread_mutex_lock(&p_rwlock->mutex);
+    pthread_mutex_lock(&p_rwlock->mutex);
+    ++p_rwlock->writer_cnt;
+    // printf("my_rwlock_wrlock! %d %d %d\n", p_rwlock->reader_cnt, p_rwlock->writer_cnt, p_rwlock->writing);
+    if (p_rwlock->writing || p_rwlock->reader_cnt > 0)
         pthread_cond_wait(&p_rwlock->cv_write, &p_rwlock->mutex);
-        pthread_mutex_unlock(&p_rwlock->mutex);
-    }
+    // printf("Writer get a lock!\n");
+    p_rwlock->writing = 1;
+    pthread_mutex_unlock(&p_rwlock->mutex);
+
     return 0;
 }
 
 int my_rwlock_unlock(my_rwlock_t* p_rwlock)
 {
-    if(my_atomic_integer_read(&p_rwlock->reading_cnt) > 0) {
-        // case of read lock.
-        my_atomic_integer_dec(&p_rwlock->reading_cnt);
-        int old = my_atomic_integer_sub(&p_rwlock->atomic_vars.combined, 1 << LSB_OFFSET_READER_CNT);
-        if(((my_rwlock_t_atomic_vars) old).vars.reader_cnt == 1) {
-            pthread_cond_signal(&p_rwlock->cv_write);
+    pthread_mutex_lock(&p_rwlock->mutex);
+
+    if (p_rwlock->writing) {
+
+        --p_rwlock->writer_cnt;
+
+        if (p_rwlock->reader_cnt > 0) {   // reader preference
+            p_rwlock->writing = 0;
+            // printf("my_rwlock_unlock! (writer) %d %d %d\n", p_rwlock->reader_cnt, p_rwlock->writer_cnt, p_rwlock->writing);
+            pthread_cond_broadcast(&p_rwlock->cv_read);
         }
-    }
-    else {
-        // case of write lock.
-        int val = my_atomic_integer_read(&p_rwlock->atomic_vars.combined);
-        if (((my_rwlock_t_atomic_vars) val).vars.reader_cnt == 0) {
+        else if (p_rwlock->writer_cnt > 0) {
+            // printf("my_rwlock_unlock! (writer) %d %d %d\n", p_rwlock->reader_cnt, p_rwlock->writer_cnt,p_rwlock->writing);
             pthread_cond_signal(&p_rwlock->cv_write);
         }
         else {
-            pthread_cond_broadcast(&p_rwlock->cv_read);
+            p_rwlock->writing = 0;
+            // printf("my_rwlock_unlock! (writer) %d %d %d\n", p_rwlock->reader_cnt, p_rwlock->writer_cnt, p_rwlock->writing);
         }
-        // set can_read = 1
-        __sync_fetch_and_or(&p_rwlock->atomic_vars.combined, 0x00000001);
     }
+    else {
+
+        --p_rwlock->reader_cnt;
+        // printf("my_rwlock_unlock! (reader) %d %d %d\n", p_rwlock->reader_cnt, p_rwlock->writer_cnt, p_rwlock->writing);
+
+        if (p_rwlock->reader_cnt > 0)
+            pthread_cond_broadcast(&p_rwlock->cv_read);
+        else if (p_rwlock->writer_cnt > 0) {
+            // printf("pthread_cond_signal(&p_rwlock->cv_write)\n");
+            p_rwlock->writing = 1;
+            pthread_cond_signal(&p_rwlock->cv_write);
+        }
+    }
+
+    pthread_mutex_unlock(&p_rwlock->mutex);
+
     return 0;
 }

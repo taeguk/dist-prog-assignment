@@ -27,7 +27,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <my_rwl.h>
+#include "my_rwl.h"
 #include "my_rand.h"
 #include "timer.h"
 
