@@ -5,6 +5,7 @@
  */
 
 #include "time.h"
+#include "timer.h"
 
 int *
 get_time_1_svc(void *argp, struct svc_req *rqstp)
@@ -15,7 +16,7 @@ get_time_1_svc(void *argp, struct svc_req *rqstp)
 	 * insert server code here
 	 */
 
-	result = 123;
+	result = timer_atomic_get_tod();
 
 	return &result;
 }
@@ -28,6 +29,8 @@ delay_1_svc(int *argp, struct svc_req *rqstp)
 	/*
 	 * insert server code here
 	 */
+
+	timer_delay(*argp);
 
 	return &result;
 }

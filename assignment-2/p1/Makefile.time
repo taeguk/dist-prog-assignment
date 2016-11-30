@@ -12,7 +12,7 @@ SOURCES_SVC.c =
 SOURCES_SVC.h = 
 SOURCES.x = time.x
 
-TARGETS_SVC.c = time_svc.c time_server.c   
+TARGETS_SVC.c = time_svc.c time_server.c timer.c
 TARGETS_CLNT.c = time_clnt.c time_client.c   
 TARGETS = time.h   time_clnt.c time_svc.c time_client.c time_server.c
 
@@ -39,7 +39,7 @@ $(CLIENT) : $(OBJECTS_CLNT)
 	$(LINK.c) -o $(CLIENT) $(OBJECTS_CLNT) $(LDLIBS)
 
 $(SERVER) : $(OBJECTS_SVC) 
-	$(LINK.c) -o $(SERVER) $(OBJECTS_SVC) $(LDLIBS)
+	$(LINK.c) -o $(SERVER) $(OBJECTS_SVC) $(LDLIBS) -lpthread
 
  clean:
 	 $(RM) core $(TARGETS) $(OBJECTS_CLNT) $(OBJECTS_SVC) $(CLIENT) $(SERVER)

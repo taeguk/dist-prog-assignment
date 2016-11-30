@@ -14,7 +14,7 @@ time_prog_1(char *host)
 	int  *result_1;
 	char *get_time_1_arg;
 	int  *result_2;
-	int  delay_1_arg;
+	int  delay_1_arg = 10;
 
 #ifndef	DEBUG
 	clnt = clnt_create (host, TIME_PROG, TIME_VERS, "udp");
