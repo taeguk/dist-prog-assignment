@@ -182,15 +182,18 @@ int Insert(int value) {
 /*-----------------------------------------------------------------*/
 void Print(void) {
    struct list_node_s* temp;
+   FILE *fp = fopen("my_optimized_result.txt", "wt");
 
-   printf("list = ");
+   fprintf(fp, "list = ");
 
    temp = head;
    while (temp != (struct list_node_s*) NULL) {
-      printf("%d ", temp->data);
+      fprintf(fp, "%d ", temp->data);
       temp = temp->next;
    }
-   printf("\n");
+   fprintf(fp, "\n");
+
+   printf("Print result to my_optimized_result.txt.\n");
 }  /* Print */
 
 

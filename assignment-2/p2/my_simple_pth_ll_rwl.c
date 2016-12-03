@@ -27,7 +27,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
+#include "my_rwl.h"
 #include "my_rand.h"
 #include "timer.h"
 
@@ -48,7 +48,7 @@ int         total_ops;
 double      insert_percent;
 double      search_percent;
 double      delete_percent;
-pthread_rwlock_t    rwlock;
+my_rwlock_t    rwlock;
 pthread_mutex_t     count_mutex;
 int         member_count = 0, insert_count = 0, delete_count = 0;
 
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
 
    thread_handles = malloc(thread_count*sizeof(pthread_t));
    pthread_mutex_init(&count_mutex, NULL);
-   pthread_rwlock_init(&rwlock, NULL);
+   my_rwlock_init(&rwlock, NULL);
 
    GET_TIME(start);
    for (i = 0; i < thread_count; i++)
@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
 #  endif
 
    Free_list();
-   pthread_rwlock_destroy(&rwlock);
+   my_rwlock_destroy(&rwlock);
    pthread_mutex_destroy(&count_mutex);
    free(thread_handles);
 
@@ -182,7 +182,7 @@ int Insert(int value) {
 /*-----------------------------------------------------------------*/
 void Print(void) {
    struct list_node_s* temp;
-   FILE *fp = fopen("pthread_result.txt", "wt");
+   FILE *fp = fopen("my_simple_result.txt", "wt");
 
    fprintf(fp, "list = ");
 
@@ -193,7 +193,7 @@ void Print(void) {
    }
    fprintf(fp, "\n");
 
-   printf("Print result to pthread_result.txt.\n");
+   printf("Print result to my_simple_result.txt.\n");
 }  /* Print */
 
 
@@ -296,19 +296,19 @@ void* Thread_work(void* rank) {
       which_op = my_drand(&seed);
       val = my_rand(&seed) % MAX_KEY;
       if (which_op < search_percent) {
-         pthread_rwlock_rdlock(&rwlock);
+         my_rwlock_rdlock(&rwlock);
          Member(val);
-         pthread_rwlock_unlock(&rwlock);
+         my_rwlock_unlock(&rwlock);
          my_member_count++;
       } else if (which_op < search_percent + insert_percent) {
-         pthread_rwlock_wrlock(&rwlock);
+         my_rwlock_wrlock(&rwlock);
          Insert(val);
-         pthread_rwlock_unlock(&rwlock);
+         my_rwlock_unlock(&rwlock);
          my_insert_count++;
       } else { /* delete */
-         pthread_rwlock_wrlock(&rwlock);
+         my_rwlock_wrlock(&rwlock);
          Delete(val);
-         pthread_rwlock_unlock(&rwlock);
+         my_rwlock_unlock(&rwlock);
          my_delete_count++;
       }
    }  /* for */

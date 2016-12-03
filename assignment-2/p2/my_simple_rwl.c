@@ -39,7 +39,7 @@ int my_rwlock_rdlock(my_rwlock_t* p_rwlock)
 {
     pthread_mutex_lock(&p_rwlock->mutex);
     ++p_rwlock->reader_cnt;
-    while (p_rwlock->writing)
+    if (p_rwlock->writing)
         pthread_cond_wait(&p_rwlock->cv_read, &p_rwlock->mutex);
     pthread_mutex_unlock(&p_rwlock->mutex);
 
@@ -50,7 +50,7 @@ int my_rwlock_wrlock(my_rwlock_t* p_rwlock)
 {
     pthread_mutex_lock(&p_rwlock->mutex);
     ++p_rwlock->writer_cnt;
-    while (p_rwlock->writing || p_rwlock->reader_cnt > 0)
+    if (p_rwlock->writing || p_rwlock->reader_cnt > 0)
         pthread_cond_wait(&p_rwlock->cv_write, &p_rwlock->mutex);
     p_rwlock->writing = 1;
     pthread_mutex_unlock(&p_rwlock->mutex);
@@ -58,9 +58,6 @@ int my_rwlock_wrlock(my_rwlock_t* p_rwlock)
     return 0;
 }
 
-/*
- * a little faster than --simple-- version.
- */
 int my_rwlock_unlock(my_rwlock_t* p_rwlock)
 {
     pthread_mutex_lock(&p_rwlock->mutex);
@@ -70,34 +67,27 @@ int my_rwlock_unlock(my_rwlock_t* p_rwlock)
 
         if (p_rwlock->reader_cnt > 0) {   // reader preference
             p_rwlock->writing = 0;
-            pthread_mutex_unlock(&p_rwlock->mutex);
             pthread_cond_broadcast(&p_rwlock->cv_read);
         }
         else if (p_rwlock->writer_cnt > 0) {
-            pthread_mutex_unlock(&p_rwlock->mutex);
             pthread_cond_signal(&p_rwlock->cv_write);
         }
         else {
             p_rwlock->writing = 0;
-            pthread_mutex_unlock(&p_rwlock->mutex);
         }
     }
     else {
         --p_rwlock->reader_cnt;
 
-        if (p_rwlock->reader_cnt > 0) {
-            pthread_mutex_unlock(&p_rwlock->mutex);
+        if (p_rwlock->reader_cnt > 0)
             pthread_cond_broadcast(&p_rwlock->cv_read);
-        }
         else if (p_rwlock->writer_cnt > 0) {
             p_rwlock->writing = 1;
-            pthread_mutex_unlock(&p_rwlock->mutex);
             pthread_cond_signal(&p_rwlock->cv_write);
         }
-        else {
-            pthread_mutex_unlock(&p_rwlock->mutex);
-        }
     }
+
+    pthread_mutex_unlock(&p_rwlock->mutex);
 
     return 0;
 }
