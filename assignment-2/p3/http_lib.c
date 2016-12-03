@@ -105,8 +105,10 @@ int process_request(const char* request, int fd)
             return -1;
         }
         send_response( fd, 200, "Ok", NULL);
-        while ( (cn = fread(buf, 1, sizeof(buf), fp)) != EOF )
+        while ( (cn = fread(buf, 1, sizeof(buf), fp)) > 0 ) {
             write(fd, buf, cn);
+        }
+        fclose(fp);
     }
 
     return 0;

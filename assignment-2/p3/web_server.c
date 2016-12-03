@@ -19,7 +19,9 @@ void* worker_thread_main(void* param)
     {
         struct request *req;
         request_queue_pop(q, &req);
+        printf("Before process! (%s)\n", req->req_msg);
         process_request(req->req_msg, req->sock);
+        printf("After process! (%s)\n", req->req_msg);
         close(req->sock);
         free(req);
     }
@@ -84,18 +86,20 @@ int main(int argc, char **argv)
         clnt_sock = accept(listen_sock, (struct sockaddr *)&clnt_addr,
                                &clnt_len);
         if (clnt_sock == -1) {
-            perror("Accept error : ");
+            perror("accept error : ");
             continue;
         }
 
         struct request *req = malloc(sizeof(struct request));
+        int cn;
 
-        if (read(clnt_sock, req->req_msg, MAX_REQUEST_LEN) <= 0) {
-            printf("Error occurs at read()!!!!!!!!\n");
+        if ((cn=read(clnt_sock, req->req_msg, MAX_REQUEST_LEN)) == -1) {
+            perror("read error : ");
             close(clnt_sock);
             free(req);
             continue;
         }
+        req->req_msg[cn] = '\0';
 
         req->sock = clnt_sock;
         request_queue_push(&rqueue, req);

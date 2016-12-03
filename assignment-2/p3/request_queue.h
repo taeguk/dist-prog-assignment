@@ -10,6 +10,8 @@ struct request {
     int sock;
 };
 
+/* This value must be below than (Max File Descriptor / 2 - 10).
+ * 10 is a just sufficient number for default opening fds. */
 #define REQUEST_QUEUE_SIZE  1000
 
 struct request_queue {
