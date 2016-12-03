@@ -39,7 +39,7 @@ int my_rwlock_rdlock(my_rwlock_t* p_rwlock)
 {
     pthread_mutex_lock(&p_rwlock->mutex);
     ++p_rwlock->reader_cnt;
-    if (p_rwlock->writing)
+    while (p_rwlock->writing)
         pthread_cond_wait(&p_rwlock->cv_read, &p_rwlock->mutex);
     pthread_mutex_unlock(&p_rwlock->mutex);
 
@@ -50,7 +50,7 @@ int my_rwlock_wrlock(my_rwlock_t* p_rwlock)
 {
     pthread_mutex_lock(&p_rwlock->mutex);
     ++p_rwlock->writer_cnt;
-    if (p_rwlock->writing || p_rwlock->reader_cnt > 0)
+    while (p_rwlock->writing || p_rwlock->reader_cnt > 0)
         pthread_cond_wait(&p_rwlock->cv_write, &p_rwlock->mutex);
     p_rwlock->writing = 1;
     pthread_mutex_unlock(&p_rwlock->mutex);
