@@ -19,13 +19,11 @@ inline int timer_atomic_get_tod(void)
 
 static void timer_handler (int signum)
 {
-    printf("timer_handler()!\n");
     timer_atomic_inc_tod();
 }
 
 static void* timer_thread_main(void* param)
 {
-    printf("timer_thread_main()!\n");
     struct sigaction sa;
     struct itimerval timer;
 
@@ -57,11 +55,6 @@ int timer_start()
     pthread_create(&tid, &attr, timer_thread_main, NULL);
 
     return 0;
-}
-
-static void timer_junk_handler (int signum)
-{
-    printf("timer_junk_handler()!\n");
 }
 
 int timer_delay(int interval)
