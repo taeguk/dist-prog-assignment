@@ -29,8 +29,8 @@ int request_queue_push(struct request_queue *q, struct request *req)
     }
     q->reqs[q->rear] = req;
     q->rear = new_rear;
-    pthread_cond_signal(&q->cv_notempty);  // must be with in critical section.
     pthread_mutex_unlock(&q->mutex);
+    pthread_cond_signal(&q->cv_notempty);
     return 0;
 }
 
@@ -43,7 +43,7 @@ int request_queue_pop(struct request_queue *q, struct request **p_req)
     }
     *p_req = q->reqs[q->front];
     q->front = (q->front+1) % REQUEST_QUEUE_SIZE;
-    pthread_cond_signal(&q->cv_notfull);  // must be with in critical section.
     pthread_mutex_unlock(&q->mutex);
+    pthread_cond_signal(&q->cv_notfull);
     return 0;
 }

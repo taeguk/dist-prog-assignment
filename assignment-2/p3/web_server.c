@@ -19,9 +19,7 @@ void* worker_thread_main(void* param)
     {
         struct request *req;
         request_queue_pop(q, &req);
-        printf("Before process! (%s)\n", req->req_msg);
         process_request(req->req_msg, req->sock);
-        printf("After process! (%s)\n", req->req_msg);
         close(req->sock);
         free(req);
     }
@@ -87,6 +85,7 @@ int main(int argc, char **argv)
                                &clnt_len);
         if (clnt_sock == -1) {
             perror("accept error : ");
+            close(clnt_sock);
             continue;
         }
 

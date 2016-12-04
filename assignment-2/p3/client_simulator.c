@@ -9,6 +9,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
+#include "timer.h"
 
 #define BUF_SIZE    1024
 
@@ -36,6 +37,7 @@ void* request_thread_main(void *param)
 
         if((sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
             perror("socket error : ");
+            --i;
             break;
         }
 
@@ -47,6 +49,8 @@ void* request_thread_main(void *param)
 
         if(connect(sock, (struct sockaddr *)&srv_addr, sizeof(srv_addr)) < 0) {
             perror("connect error : ");
+            --i;
+            close(sock);
             break;
         }
 
@@ -59,17 +63,18 @@ void* request_thread_main(void *param)
 
         if(write(sock, request, cn) == -1) {
             perror("write error : ");
+            close(sock);
             break;
         }
 
         int read_bytes = 0;
         cn = read(sock, buf, BUF_SIZE);
 
-        printf("[Thread %d][#%d] First Read Yeah!\n", p_sm_info->sm_id, i);
+        //printf("[Thread %d][#%d] First Read Yeah!\n", p_sm_info->sm_id, i);
 
         int status = -1;
         if(sscanf(buf, "%*s %d %*s\r\n", &status) != 1) {
-            perror("parsing error : ");
+            printf("parsing error : %s\n", buf);
             continue;
         }
 
@@ -78,10 +83,14 @@ void* request_thread_main(void *param)
             cn = read(sock, buf, BUF_SIZE);
         }
 
+        /*
         if (cn == -1) {
             perror("read error : ");
+            close(sock);
+            close(sock);
             break;
         }
+        */
 
         if (status == 200) {
             printf("[Thread %d][#%d] Receive %d Bytes. (status : %d)\n", p_sm_info->sm_id, i, read_bytes, status);
@@ -91,6 +100,8 @@ void* request_thread_main(void *param)
         }
 
         close(sock);
+
+        //sleep(1);
     }
 
     pthread_exit(0);
@@ -124,10 +135,18 @@ int main(int argc, char **argv)
     tids = malloc(sizeof(*tids) * thread_num);
 
     for(int i=0; i<thread_num; ++i) {
-        pthread_attr_t attr;
         sm_info_list[i] = org_sm_info;
         sm_info_list[i].sm_id = i;
         sm_info_list[i].rand_seed = time(NULL) + i * 0xabcdef;
+    }
+
+    double start, finish;
+
+    GET_TIME(start);
+
+    // create all threads.
+    for(int i=0; i<thread_num; ++i) {
+        pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_create(&tids[i], &attr, request_thread_main, &sm_info_list[i]);
     }
@@ -136,6 +155,10 @@ int main(int argc, char **argv)
     for(int i=0; i<thread_num; ++i) {
         pthread_join(tids[i], NULL);
     }
+
+    GET_TIME(finish);
+
+    printf("Elapsed Time : %e seconds.\n", finish - start);
 
     free(sm_info_list);
     free(tids);

@@ -99,7 +99,7 @@ int process_request(const char* request, int fd)
     }
     else
     {
-        fp = fopen( path, "r" );
+        fp = fopen( path, "rb" );
         if ( fp == (FILE*) 0 ) {
             send_response(fd, 403, "Forbidden", "File is protected.");
             return -1;
