@@ -8,6 +8,6 @@ Usage
 
 Source Codes
 ----------
-The source codes that are written by me : "my_rwl.h", "my_rwl.c", "my_pth_ll_rwl.c",
-    "--fail--...", "--simple--...".
+The source codes that are written by me : "my_*_rwl.h", "my_*_rwl.c", "my_pth_ll_rwl.c",
+    "--fail--...".
 The others are just given.
