@@ -95,8 +95,8 @@ extern "C" void cuda_version_1(float C[MATRIX_SIZE][MATRIX_SIZE], float A[MATRIX
     CUDA_CALL(cudaMemcpy(B_device, B, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE, cudaMemcpyHostToDevice));
 
     // execute kernel.
-    dim3 block(32,32);
-    dim3 grid(MATRIX_SIZE/32, MATRIX_SIZE/32);
+    dim3 block(BLOCK_WIDTH,BLOCK_HEIGHT);
+    dim3 grid(MATRIX_SIZE/BLOCK_WIDTH, MATRIX_SIZE/BLOCK_HEIGHT);
     float device_time;
 
     printf("[CUDA 1] Start Launching Kernel (cuda_1).\n");
@@ -131,8 +131,8 @@ extern "C" void cuda_version_2(float C[MATRIX_SIZE][MATRIX_SIZE], float A[MATRIX
     CUDA_CALL(cudaMemcpy(B_device, B, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE, cudaMemcpyHostToDevice));
 
     // execute kernel.
-    dim3 block(32,32);
-    dim3 grid(MATRIX_SIZE/32, MATRIX_SIZE/32);
+    dim3 block(BLOCK_WIDTH,BLOCK_HEIGHT);
+    dim3 grid(MATRIX_SIZE/BLOCK_WIDTH, MATRIX_SIZE/BLOCK_HEIGHT);
     float device_time;
 
     printf("[CUDA 2] Start Launching Kernel (cuda_2).\n");
@@ -167,8 +167,8 @@ extern "C" void cuda_version_3(float C[MATRIX_SIZE][MATRIX_SIZE], float A[MATRIX
     CUDA_CALL(cudaMemcpy(B_device, B, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE, cudaMemcpyHostToDevice));
 
     // execute kernel.
-    dim3 block(32,32);
-    dim3 grid(MATRIX_SIZE/32, MATRIX_SIZE/32);
+    dim3 block(BLOCK_WIDTH,BLOCK_HEIGHT);
+    dim3 grid(MATRIX_SIZE/BLOCK_WIDTH, MATRIX_SIZE/BLOCK_HEIGHT);
     float device_time;
 
     printf("[CUDA 3] Start Launching Kernel (cuda_3).\n");

@@ -1,4 +1,4 @@
-Assignment #4 - Problem 1 [CUDA Programming 1 - Matrix Multiplication]
+Assignment #4 - Problem 1 [CUDA Programming 2 - Reduction]
 ==============================================
     By 20141500 (taeguk. http://taeguk.me)
 

@@ -46,15 +46,15 @@ int main(int argc, char *argv[])
 
     cuda_version_2(&res_cuda_2, arr);
     if (res_serial != res_cuda_2)
-        printf("[CUDA 1] ERROR! (%d vs %d)\n", res_serial, res_cuda_2);
+        printf("[CUDA 2] ERROR! (%d vs %d)\n", res_cuda_1, res_cuda_2);
 
     cuda_version_3(&res_cuda_3, arr);
     if (res_serial != res_cuda_3)
-        printf("[CUDA 1] ERROR! (%d vs %d)\n", res_serial, res_cuda_3);
+        printf("[CUDA 3] ERROR! (%d vs %d)\n", res_cuda_1, res_cuda_3);
 
     cuda_version_4(&res_cuda_4, arr);
     if (res_serial != res_cuda_4)
-        printf("[CUDA 1] ERROR! (%d vs %d)\n", res_serial, res_cuda_4);
+        printf("[CUDA 4] ERROR! (%d vs %d)\n", res_cuda_1, res_cuda_4);
 
     cuda_destroy();
 

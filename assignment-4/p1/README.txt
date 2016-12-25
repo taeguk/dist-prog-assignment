@@ -5,7 +5,6 @@ Assignment #4 - Problem 1 [CUDA Programming 1 - Matrix Multiplication]
 Usage
 ----------
 ./run.sh
-(But, MATRIX_SIZE must be 32*N)
 
 Description
 --------------
