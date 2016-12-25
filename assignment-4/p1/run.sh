@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo -n "Input MATRIX_SIZE >> "
+echo -n "Input MATRIX_SIZE (32*N) >> "
 read MATRIX_SIZE
 echo
 
